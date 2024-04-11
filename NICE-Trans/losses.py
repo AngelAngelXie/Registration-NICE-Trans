@@ -21,7 +21,7 @@ class NCC:
         win = [self.win] * ndims
 
         # compute filters
-        sum_filt = torch.ones([1, Ii.size(1), *win]).to(y_pred.device)
+        sum_filt = torch.ones([Ii.size(1), 1, *win]).to(y_pred.device)
 
         pad_no = math.floor(win[0] / 2)
 
