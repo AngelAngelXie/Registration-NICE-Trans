@@ -113,6 +113,7 @@ def train(train_dir,
     valid_dl = DataLoader(NICE_Transeg_Dataset(valid_dir, device), batch_size=2, shuffle=True)
     atlas_dl = DataLoader(NICE_Transeg_Dataset(atlas_dir, device), batch_size=1, shuffle=True)
     
+
     # training/validate loops
     for epoch in range(initial_epoch, epochs):
         start_time = time.time()
