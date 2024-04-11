@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import torch
 from torch.utils.data import Dataset
 
 class NICE_Transeg_Dataset(Dataset):
@@ -38,10 +39,15 @@ class NICE_Transeg_Dataset(Dataset):
             if self.transform:
                 label = self.transform(label)
 
+        # # Move data to the device if provided
+        # if self.device:
+        #     img = img.to(self.device)
+        #     if label is not None:
+        #         label = label.to(self.device)
         # Move data to the device if provided
         if self.device:
-            img = img.to(self.device)
+            img = torch.from_numpy(img).to(self.device)
             if label is not None:
-                label = label.to(self.device)
+                label = torch.from_numpy(label).to(self.device)
 
         return img, label
