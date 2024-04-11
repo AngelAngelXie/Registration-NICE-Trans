@@ -38,7 +38,7 @@ class NICE_Transeg_Dataset(Dataset):
         # for BraTS2020, default dimensions (240, 240, 155)
         nii_file_path = self.files[idx]
         nii_image = nib.load(nii_file_path)
-        image, label = nii_image.get_fdata()
+        image = nii_image.get_fdata()
 
         return self.transform(image).unsqueeze(0).to(self.device), self.transform(label).unsqueeze(0).to(self.device)
         # return torch.reshape(self.transform(image)[:,:,:144], (144, 192, 160)).unsqueeze(0).to(self.device), self.transform(label).unsqueeze(0).to(self.device)
