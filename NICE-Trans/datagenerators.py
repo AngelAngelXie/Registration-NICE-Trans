@@ -23,8 +23,8 @@ class NICE_Transeg_Dataset(Dataset):
         self.device = device
         self.images = []
         self.labels = []
-        files = glob(path.join(data_path, "*.pkl")) # for IXI
-        # files = path.join(data_path, "*.nii") # for BraTS2020
+        # files = glob(path.join(data_path, "*.pkl")) # for IXI
+        files = path.join(data_path, "*.nii") # for BraTS2020
         self.files = files
         print(f"{data_path.split('/')[-1]} file num: {len(files)}")
 
@@ -33,12 +33,12 @@ class NICE_Transeg_Dataset(Dataset):
 
     def __getitem__(self, idx):
         # for IXI
-        image, label = np.load(self.files[idx], allow_pickle=True) 
+        # image, label = np.load(self.files[idx], allow_pickle=True) 
 
         # for BraTS2020, default dimensions (240, 240, 155)
-        # nii_file_path = self.files[idx]
-        # nii_image = nib.load(nii_file_path)
-        # image, label = nii_image.get_fdata()
+        nii_file_path = self.files[idx]
+        nii_image = nib.load(nii_file_path)
+        image, label = nii_image.get_fdata()
 
         return self.transform(image).unsqueeze(0).to(self.device), self.transform(label).unsqueeze(0).to(self.device)
         # return torch.reshape(self.transform(image)[:,:,:144], (144, 192, 160)).unsqueeze(0).to(self.device), self.transform(label).unsqueeze(0).to(self.device)
