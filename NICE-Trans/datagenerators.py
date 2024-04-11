@@ -1,91 +1,51 @@
 import os, sys
 import numpy as np
 import scipy.ndimage
+import torch
+# from torchvision import transforms
+from torch.utils.data import Dataset
+from glob import glob
+from os import path
+import nibabel as nib # for BraTS2020 nii images
 
-
-def gen_s2s(gen, batch_size=1):
-
-    while True:
-        X = next(gen)
-        fixed = X[0]
-        moving = X[1]
-        
-        # generate a zero tensor as pseudo labels
-        Zero = np.zeros((1))
-        
-        yield ([fixed, moving], [fixed, Zero, fixed, Zero])
-        
-
-def gen_pairs(path, pairs, batch_size=1):
+def nii_to_array(nii_file_path):
+    # Load the .nii file
+    nii_image = nib.load(nii_file_path)
     
-    pairs_num = len(pairs)  
-    while True:
-        idxes = np.random.randint(pairs_num, size=batch_size)
-
-        # load fixed images
-        X_data = []
-        for idx in idxes:
-            fixed = bytes.decode(pairs[idx][0])
-            X = load_volfile(path+fixed, np_var='vol')
-            X = X[np.newaxis, np.newaxis, ...]
-            X_data.append(X)
-        if batch_size > 1:
-            return_vals = [np.concatenate(X_data, 0)]
-        else:
-            return_vals = [X_data[0]]
-
-        # load moving images
-        X_data = []
-        for idx in idxes:
-            moving = bytes.decode(pairs[idx][1])
-            X = load_volfile(path+moving, np_var='vol')
-            X = X[np.newaxis, np.newaxis, ...]
-            X_data.append(X)
-        if batch_size > 1:
-            return_vals.append(np.concatenate(X_data, 0))
-        else:
-            return_vals.append(X_data[0])
-        
-        yield tuple(return_vals)
-
-        
-def load_by_name(path, name):
+    # Convert the image to a numpy array
+    image_array = nii_image.get_fdata()
     
-    npz_data = load_volfile(path+bytes.decode(name), np_var='all')
+    return image_array
+
+class NICE_Transeg_Dataset(Dataset):
+    def __init__(self, data_path, device, transform=torch.from_numpy):
+        self.transform = transform
+        self.device = device
+        self.images = []
+        self.labels = []
+        files = glob(path.join(data_path, "*.pkl")) # for IXI
+        # files = path.join(data_path, "*.nii") # for BraTS2020
+        self.files = files
+        print(f"{data_path.split('/')[-1]} file num: {len(files)}")
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        # for IXI
+        image, label = np.load(self.files[idx], allow_pickle=True) 
+
+        # for BraTS2020, default dimensions (240, 240, 155)
+        # nii_file_path = self.files[idx]
+        # nii_image = nib.load(nii_file_path)
+        # image, label = nii_image.get_fdata()
+
+        return self.transform(image).unsqueeze(0).to(self.device), self.transform(label).unsqueeze(0).to(self.device)
+        # return torch.reshape(self.transform(image)[:,:,:144], (144, 192, 160)).unsqueeze(0).to(self.device), self.transform(label).unsqueeze(0).to(self.device)
     
-    X = npz_data['vol']
-    X = X[np.newaxis, np.newaxis, ...]
-    return_vals = [X]
-    
-    X = npz_data['label']
-    X = X[np.newaxis, np.newaxis, ...]
-    return_vals.append(X)
-    
-    return tuple(return_vals)
+def print_gpu_usage(note=""):
+    print(f"{note}: %fGB"%(torch.cuda.memory_allocated(0)/1024/1024/1024))
 
 
-def load_volfile(datafile, np_var):
-    """
-    load volume file
-    formats: nii, nii.gz, mgz, npz
-    if it's a npz (compressed numpy), variable names innp_var (default: 'vol_data')
-    """
-    assert datafile.endswith(('.nii', '.nii.gz', '.mgz', '.npz')), 'Unknown data file'
 
-    if datafile.endswith(('.nii', '.nii.gz', '.mgz')):
-        # import nibabel
-        if 'nibabel' not in sys.modules:
-            try :
-                import nibabel as nib  
-            except:
-                print('Failed to import nibabel. need nibabel library for these data file types.')
 
-        X = nib.load(datafile).get_data()
-        
-    else: # npz
-        if np_var == 'all':
-            X = X = np.load(datafile)
-        else:
-            X = np.load(datafile)[np_var]
-
-    return X
