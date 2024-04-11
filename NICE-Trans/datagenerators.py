@@ -24,7 +24,7 @@ class NICE_Transeg_Dataset(Dataset):
         self.images = []
         self.labels = []
         # files = glob(path.join(data_path, "*.pkl")) # for IXI
-        files = path.join(data_path, "*.nii") # for BraTS2020
+        files = glob(path.join(data_path, "*.nii")) # for BraTS2020
         self.files = files
         print(f"{data_path.split('/')[-1]} file num: {len(files)}")
 
