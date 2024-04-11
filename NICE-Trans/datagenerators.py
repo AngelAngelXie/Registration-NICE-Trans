@@ -40,7 +40,8 @@ class NICE_Transeg_Dataset(Dataset):
         nii_image = nib.load(nii_file_path)
         image = nii_image.get_fdata()
 
-        return self.transform(image).unsqueeze(0).to(self.device), self.transform(label).unsqueeze(0).to(self.device)
+        return self.transform(image).unsqueeze(0).to(self.device)
+        # return self.transform(image).unsqueeze(0).to(self.device), self.transform(label).unsqueeze(0).to(self.device)
         # return torch.reshape(self.transform(image)[:,:,:144], (144, 192, 160)).unsqueeze(0).to(self.device), self.transform(label).unsqueeze(0).to(self.device)
     
 def print_gpu_usage(note=""):
