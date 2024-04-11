@@ -16,7 +16,7 @@ from torch.distributions.normal import Normal
 class NICE_Trans(nn.Module):
     
     def __init__(self, 
-                 in_channels: int = 1, 
+                 in_channels: int = 3, 
                  enc_channels: int = 8, 
                  dec_channels: int = 16, 
                  use_checkpoint: bool = True):
