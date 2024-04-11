@@ -1,6 +1,6 @@
 import os
+import numpy as np
 from torch.utils.data import Dataset
-import nibabel as nib
 
 class NICE_Transeg_Dataset(Dataset):
     def __init__(self, data_path, device=None, mask_path=None, transform=None):
@@ -24,7 +24,7 @@ class NICE_Transeg_Dataset(Dataset):
     def __getitem__(self, idx):
         # Load the image
         img_path = os.path.join(self.data_path, self.images[idx])
-        img = nib.load(img_path).get_fdata()
+        img = np.load(img_path)
 
         # Apply transformations to the image
         if self.transform:
@@ -34,7 +34,7 @@ class NICE_Transeg_Dataset(Dataset):
         label = None
         if self.mask_path is not None:
             label_path = os.path.join(self.mask_path, self.labels[idx])
-            label = nib.load(label_path).get_fdata()
+            label = np.load(label_path)
             if self.transform:
                 label = self.transform(label)
 
