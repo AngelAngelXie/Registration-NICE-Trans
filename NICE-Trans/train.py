@@ -109,9 +109,9 @@ def train(train_dir,
     Losses = [losses.NCC(win=9).loss, losses.Regu_loss, losses.NCC(win=9).loss]
     Weights = [1.0, 1.0, 1.0]
 
-    train_dl = DataLoader(NICE_Transeg_Dataset(train_dir, device), batch_size=batch_size, shuffle=True)
-    valid_dl = DataLoader(NICE_Transeg_Dataset(valid_dir, device), batch_size=2, shuffle=True)
-    atlas_dl = DataLoader(NICE_Transeg_Dataset(atlas_dir, device), batch_size=1, shuffle=True)
+    train_dl = DataLoader(NICE_Transeg_Dataset(train_dir, device, mask_path="/content/drive/MyDrive/NICE_Transeg/BraTS2020/train/masks"), batch_size=batch_size, shuffle=True)
+    valid_dl = DataLoader(NICE_Transeg_Dataset(valid_dir, device, mask_path="/content/drive/MyDrive/NICE_Transeg/BraTS2020/val/masks"), batch_size=2, shuffle=True)
+    atlas_dl = DataLoader(NICE_Transeg_Dataset(atlas_dir, device, mask_path="/content/drive/MyDrive/NICE_Transeg/BraTS2020/atlas/masks"), batch_size=1, shuffle=True)
     
 
     # training/validate loops

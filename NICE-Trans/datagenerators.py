@@ -3,7 +3,7 @@ from torch.utils.data import Dataset
 import nibabel as nib
 
 class NICE_Transeg_Dataset(Dataset):
-    def __init__(self, data_path, mask_path=None, transform=None, device=None):
+    def __init__(self, data_path, device=None, mask_path=None, transform=None):
         self.transform = transform
         self.device = device
         self.data_path = data_path
