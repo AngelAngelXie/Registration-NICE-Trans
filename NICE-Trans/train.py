@@ -8,66 +8,13 @@ import numpy as np
 import scipy.ndimage
 from argparse import ArgumentParser
 from torch.utils.data import DataLoader
+import torch.nn as nn
 
 # project imports
 from datagenerators import NICE_Transeg_Dataset
 import networks
 import losses
 
-def seg_weighted_cross_entropy(S, S_star, weights):
-    """
-    Compute the weighted cross entropy loss.
-
-    Parameters:
-    S (torch.Tensor): Predicted segmentation tensor of shape (B, N, P) where
-                      B is the batch size, N is the number of classes, and P is the number of voxels.
-    S_star (torch.Tensor): Ground truth segmentation tensor of shape (B, P) containing class indices.
-    weights (torch.Tensor): Class weights tensor of shape (N,).
-
-    Returns:
-    loss (torch.Tensor): Computed weighted cross entropy loss.
-    """
-    # Ensure S & S* is in log-probability form
-    log_probabilities = F.log_softmax(S, dim=1)
-    log_probabilities_star = F.log_softmax(S_star, dim=1)
-
-    # Create a weighted loss function
-    loss_fn = torch.nn.NLLLoss(weight=weights, reduction='mean')
-    # Compute the loss
-    loss = loss_fn(log_probabilities, log_probabilities_star)
-
-    return loss
-
-def seg_Dice(S, S_star, epsilon=1e-5):
-    """
-    Compute the Dice loss between two segmentation tensors according to the given formula.
-
-    Parameters:
-    S (torch.Tensor): Predicted segmentation tensor of shape (B, N, P) where
-                      B is the batch size, N is the number of classes, and P is the number of voxels.
-    S_star (torch.Tensor): Ground truth segmentation tensor of the same shape as S.
-    epsilon (float): Small value to avoid division by zero.
-
-    Returns:
-    dice_loss (torch.Tensor): Computed Dice loss.
-    """
-    # Compute per-class intersection and union
-    intersection = torch.sum(S * S_star, dim=2)
-    union = torch.sum(S, dim=2) + torch.sum(S_star, dim=2)
-    
-    # Compute per-class Dice score
-    dice_per_class = (2 * intersection + epsilon) / (union + epsilon)
-    
-    # Compute mean Dice loss across all classes
-    dice_loss = 1 - dice_per_class
-    dice_loss = torch.mean(dice_loss, dim=1)  # Average over classes
-
-    return dice_loss
-
-def joint_seg_loss(S, S_star, epsilon=1e-5, weights=1.0):
-    l_dice = seg_Dice(S, S_star, epsilon)
-    l_wce = seg_weighted_cross_entropy(S, S_star, weights)
-    return l_dice+l_wce
 
 def Dice(vol1, vol2, labels=None, nargout=1):
     
@@ -89,6 +36,7 @@ def Dice(vol1, vol2, labels=None, nargout=1):
     else:
         return (dicem, labels)
     
+    
 def NJD(displacement):
 
     D_y = (displacement[1:,:-1,:-1,:] - displacement[:-1,:-1,:-1,:])
@@ -102,8 +50,8 @@ def NJD(displacement):
     
     return np.sum(Ja_value<0)
 
-def skip(vol1, vol2):
-    return 0
+# train on 3 cuda gpu
+# python NICE-Transeg/train.py --train_dir ./data/IXI/Train/ --valid_dir ./data/IXI/Val --atlas_dir ./data/IXI/Atlas/ --device gpu0 
 
 def train(train_dir,
           valid_dir, 
@@ -120,17 +68,24 @@ def train(train_dir,
     if not os.path.isdir(model_dir):
         os.mkdir(model_dir)
 
+    # prepare model
+    model = networks.NICE_Trans(use_checkpoint=True)
+
     # device handling
     if 'gpu' in device:
-        os.environ['CUDA_VISIBLE_DEVICES'] = device[-1]
+        gpus = int(device[-1])
+        print(f'{gpus + 1} GPUs requested')
+        print(f'{torch.cuda.device_count()} GPUs found')
+
+        os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(i) for i in range(gpus+1)])
         device = 'cuda'
         torch.backends.cudnn.deterministic = True
+        if device[-1] != '0': 
+            model = nn.DataParallel(model)
     else:
         os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
         device = 'cpu'
-
-    # prepare the model
-    model = networks.NICE_Trans(use_checkpoint=True)
+        
     model.to(device)
 
     if load_model != './':
@@ -151,8 +106,8 @@ def train(train_dir,
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     
     # prepare losses
-    Losses = [losses.NCC(win=9).loss, losses.Regu_loss, losses.NCC(win=9).loss, skip, skip, joint_seg_loss, skip]
-    Weights = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    Losses = [losses.NCC(win=9).loss, losses.Regu_loss, losses.NCC(win=9).loss]
+    Weights = [1.0, 1.0, 1.0]
 
     train_dl = DataLoader(NICE_Transeg_Dataset(train_dir, device), batch_size=batch_size, shuffle=True)
     valid_dl = DataLoader(NICE_Transeg_Dataset(valid_dir, device), batch_size=2, shuffle=True)
@@ -168,15 +123,12 @@ def train(train_dir,
         train_total_loss = []
         for images, _ in train_dl:
             for atlas, _ in atlas_dl:
-                pred = model(atlas, images) # atlas = fixed image, images = moving image
-                # pred = [warped, flow, affined, affined_para, final_x_mov_seg, final_x_mov_seg_warp, final_x_fix_seg]
+                pred = model(images, atlas)
+
                 loss = 0
                 loss_list = []
-                Zero = np.zeros((1))
-                # only find the loss for warped, affine result, final_mov_seg_warp vs final_x_fix_seg
-                truth = [atlas, Zero, atlas, Zero, Zero, pred[6], Zero]
                 for i, Loss in enumerate(Losses):
-                    curr_loss = Loss(truth[i], pred[i]) * Weights[i]
+                    curr_loss = Loss(atlas, pred[i]) * Weights[i]
                     loss_list.append(curr_loss.item())
                     loss += curr_loss
 
@@ -187,8 +139,6 @@ def train(train_dir,
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                break
-            break
         
         # validation
         print("Validation begins.")
@@ -222,7 +172,6 @@ def train(train_dir,
             flow = pred[1].detach().cpu().permute(0, 2, 3, 4, 1).numpy().squeeze()
             NJD_val = NJD(flow)
             valid_NJD.append(NJD_val)
-            break
         
         # print epoch info
         epoch_info = 'Epoch %d/%d' % (epoch + 1, epochs)
