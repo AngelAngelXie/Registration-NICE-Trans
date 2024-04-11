@@ -21,13 +21,13 @@ class NCC:
         win = [self.win] * ndims
 
         # compute filters
-        sum_filt = torch.ones([1, 1, *win]).to(y_pred.device)
+        sum_filt = torch.ones([1, Ii.size(1), *win]).to(y_pred.device)
 
         pad_no = math.floor(win[0] / 2)
 
         if ndims == 1:
-            stride = (1)
-            padding = (pad_no)
+            stride = (1,)
+            padding = (pad_no,)
         elif ndims == 2:
             stride = (1, 1)
             padding = (pad_no, pad_no)
@@ -43,13 +43,13 @@ class NCC:
         J2 = Ji * Ji
         IJ = Ii * Ji
 
-        I_sum = conv_fn(Ii, sum_filt, stride=stride, padding=padding)
-        J_sum = conv_fn(Ji, sum_filt, stride=stride, padding=padding)
-        I2_sum = conv_fn(I2, sum_filt, stride=stride, padding=padding)
-        J2_sum = conv_fn(J2, sum_filt, stride=stride, padding=padding)
-        IJ_sum = conv_fn(IJ, sum_filt, stride=stride, padding=padding)
+        I_sum = conv_fn(Ii, sum_filt, stride=stride, padding=padding, groups=Ii.size(1))
+        J_sum = conv_fn(Ji, sum_filt, stride=stride, padding=padding, groups=Ii.size(1))
+        I2_sum = conv_fn(I2, sum_filt, stride=stride, padding=padding, groups=Ii.size(1))
+        J2_sum = conv_fn(J2, sum_filt, stride=stride, padding=padding, groups=Ii.size(1))
+        IJ_sum = conv_fn(IJ, sum_filt, stride=stride, padding=padding, groups=Ii.size(1))
 
-        win_size = np.prod(win)
+        win_size = np.prod(win) * Ii.size(1)
         u_I = I_sum / win_size
         u_J = J_sum / win_size
 
@@ -60,6 +60,7 @@ class NCC:
         cc = cross * cross / (I_var * J_var + 1e-5)
 
         return -torch.mean(cc)
+
 
     
 class Grad:
