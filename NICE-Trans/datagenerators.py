@@ -46,8 +46,8 @@ class NICE_Transeg_Dataset(Dataset):
         #         label = label.to(self.device)
         # Move data to the device if provided
         if self.device:
-            img = torch.from_numpy(img).permute(0,4,1,2,3).to(self.device)
+            img = torch.from_numpy(img).permute(3,0,1,2).to(self.device)
             if label is not None:
-                label = torch.from_numpy(label).permute(0,4,1,2,3).to(self.device)
+                label = torch.from_numpy(label).permute(3,0,1,2).to(self.device)
 
         return img, label
