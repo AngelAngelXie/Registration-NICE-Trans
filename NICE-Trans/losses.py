@@ -49,7 +49,7 @@ class NCC:
         J2_sum = conv_fn(J2, sum_filt, stride=stride, padding=padding, groups=Ii.size(1))
         IJ_sum = conv_fn(IJ, sum_filt, stride=stride, padding=padding, groups=Ii.size(1))
 
-        win_size = np.prod(win) * Ii.size(1)
+        win_size = np.prod(win)
         u_I = I_sum / win_size
         u_J = J_sum / win_size
 
