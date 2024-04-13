@@ -109,10 +109,15 @@ def train(train_dir,
     Losses = [losses.NCC(win=9).loss, losses.Regu_loss, losses.NCC(win=9).loss]
     Weights = [1.0, 1.0, 1.0]
 
-    train_dl = DataLoader(NICE_Transeg_Dataset(train_dir, device, mask_path="/content/drive/MyDrive/NICE_Transeg/BraTS2020/train/masks"), batch_size=batch_size, shuffle=True)
-    valid_dl = DataLoader(NICE_Transeg_Dataset(valid_dir, device, mask_path="/content/drive/MyDrive/NICE_Transeg/BraTS2020/val/masks"), batch_size=2, shuffle=True)
-    atlas_dl = DataLoader(NICE_Transeg_Dataset(atlas_dir, device, mask_path="/content/drive/MyDrive/NICE_Transeg/BraTS2020/atlas/masks"), batch_size=1, shuffle=True)
+    # train_dl = DataLoader(NICE_Transeg_Dataset(train_dir, device, mask_path="/content/drive/MyDrive/NICE_Transeg/BraTS2020/train/masks"), batch_size=batch_size, shuffle=True)
+    # valid_dl = DataLoader(NICE_Transeg_Dataset(valid_dir, device, mask_path="/content/drive/MyDrive/NICE_Transeg/BraTS2020/val/masks"), batch_size=2, shuffle=True)
+    # atlas_dl = DataLoader(NICE_Transeg_Dataset(atlas_dir, device, mask_path="/content/drive/MyDrive/NICE_Transeg/BraTS2020/atlas/masks"), batch_size=1, shuffle=True)
     
+    train_dl = DataLoader(NICE_Transeg_Dataset(train_dir, device), batch_size=batch_size, shuffle=True)
+    valid_dl = DataLoader(NICE_Transeg_Dataset(valid_dir, device), batch_size=2, shuffle=True)
+    atlas_dl = DataLoader(NICE_Transeg_Dataset(atlas_dir, device), batch_size=1, shuffle=True)
+    
+
 
     # training/validate loops
     for epoch in range(initial_epoch, epochs):
@@ -185,7 +190,7 @@ def train(train_dir,
         print(' - '.join((epoch_info, time_info, train_loss_info, valid_Dice_info, valid_Affine_info, valid_NJD_info)), flush=True)
     
         # save model checkpoint
-        torch.save(model.state_dict(), os.path.join(model_dir, '%02d.pt' % (epoch+1)))
+        torch.save(model.state_dict(), os.path.join(model_dir, '%02d.pt' % (epoch+1)), use_reentrant=False)
     
 
 if __name__ == "__main__":
